@@ -42,10 +42,11 @@
         /* Mapa */
         #map {
             height: 250px;
-            width: 100%;
+            width: 45%; /* Mapa limitado a un cuarto de pantalla */
             margin: 20px auto;
             border: 2px solid #ddd;
             border-radius: 10px;
+            float: left; /* Alineación flotante */
         }
 
         /* Menú de Órganos */
@@ -54,6 +55,8 @@
             justify-content: space-around;
             flex-wrap: wrap;
             margin: 20px 0;
+            float: right; /* Alineación flotante */
+            width: 45%; /* Ocupa el otro cuarto de pantalla */
         }
         .menu button {
             background-color: #4caf50;
@@ -148,7 +151,7 @@
 
         /* Barra de Desplazamiento Vertical Gruesa */
         ::-webkit-scrollbar {
-            width: 15px;
+            width: 45px; /* Tres veces más ancha */
         }
         ::-webkit-scrollbar-track {
             background: #f1f1f1;
@@ -239,16 +242,16 @@
         }).addTo(map);
 
         // Agregar límites del departamento y municipios
-        fetch('/static/departamentoCauca.geojson')
-            .then(response => response.json())
-            .then(data => {
-                L.geoJSON(data, { color: 'blue' }).addTo(map);
-            });
-
         fetch('/static/Municipios.geojson')
             .then(response => response.json())
             .then(data => {
                 L.geoJSON(data, { color: 'green' }).addTo(map);
+            });
+
+        fetch('/static/departamentoCauca.geojson')
+            .then(response => response.json())
+            .then(data => {
+                L.geoJSON(data, { color: 'blue' }).addTo(map);
             });
 
         // Obtener la posición GPS del usuario
@@ -260,9 +263,14 @@
                 L.marker(gpsPosition).addTo(map).bindPopup("Tu ubicación").openPopup();
             },
             error => {
-                alert("No se pudo obtener la ubicación GPS. Asegúrate de que el GPS esté activado.");
-                console.error(error);
-            }
+                console.error("Error de geolocalización:", error);
+                alert("No se pudo obtener la ubicación GPS. Usando ubicación predeterminada.");
+                const defaultPosition = [4.5709, -74.2973]; // Coordenadas de Colombia
+                gpsPosition = defaultPosition;
+                map.setView(defaultPosition, 6); // Centrar el mapa en la ubicación predeterminada
+                L.marker(defaultPosition).addTo(map).bindPopup("Ubicación predeterminada").openPopup();
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 } // Configuración avanzada
         );
 
         // Función para calcular el nivel de zoom dinámico
@@ -311,8 +319,8 @@
                     const ctx = canvas.getContext('2d');
 
                     // Redimensionar la imagen
-                    const maxWidth = 800;
-                    const maxHeight = 600;
+                    const maxWidth = 600; // Reducir el ancho máximo
+                    const maxHeight = 400; // Reducir el alto máximo
                     let width = img.width;
                     let height = img.height;
 
@@ -340,7 +348,7 @@
                         reader.onload = () => resolve(reader.result);
                         reader.onerror = reject;
                         reader.readAsDataURL(blob);
-                    }, 'image/jpeg', quality);
+                    }, 'image/jpeg', quality); // Ajusta la calidad (0.3 para mayor compresión)
                 };
                 img.onerror = reject;
             });
@@ -371,7 +379,12 @@
                     location: location
                 })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error en la solicitud: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.error) {
                     throw new Error(data.error);

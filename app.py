@@ -22,12 +22,6 @@ cursor.execute('''
 ''')
 conn.commit()
 
-# Crear índice para mejorar el rendimiento
-cursor.execute('''
-    CREATE INDEX IF NOT EXISTS idx_plant_data_username ON plant_data (username)
-''')
-conn.commit()
-
 # Ruta principal
 @app.route('/')
 def index():
@@ -99,16 +93,6 @@ def upload():
 
     except Exception as e:
         return jsonify({"error": f"Error general: {str(e)}"}), 500
-
-# Endpoint para obtener la IP pública del servidor
-@app.route('/get-ip', methods=['GET'])
-def get_ip():
-    try:
-        response = requests.get('https://api.ipify.org?format=json')
-        ip = response.json().get('ip')
-        return jsonify({"ip": ip})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
