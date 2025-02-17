@@ -113,6 +113,25 @@
             display: none;
         }
 
+        /* Barra de Progreso */
+        #progress-bar-container {
+            width: 90%;
+            margin: 20px auto;
+            display: none;
+        }
+        #progress-bar {
+            width: 0%;
+            height: 20px;
+            background-color: #4caf50;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+        #progress-text {
+            text-align: center;
+            margin-top: 5px;
+            font-size: 1rem;
+        }
+
         /* Botón de Enviar Datos */
         #submit-button {
             background-color: #2e7d32;
@@ -149,20 +168,25 @@
             background-color: #e68a00;
         }
 
-        /* Barra de Desplazamiento Vertical Gruesa */
-        ::-webkit-scrollbar {
-            width: 45px; /* Tres veces más ancha */
+        /* Logos en la Parte Inferior */
+        .footer-logos {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-top: 1px solid #ddd;
         }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
+        .footer-logos img {
+            width: 100px;
+            height: auto;
         }
-        ::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #555;
+        .footer-text {
+            text-align: center;
+            font-size: 1rem;
+            margin-top: 10px;
+            color: #555;
         }
     </style>
 </head>
@@ -207,6 +231,12 @@
     <!-- Barra de Estado -->
     <div id="status-bar"></div>
 
+    <!-- Barra de Progreso -->
+    <div id="progress-bar-container">
+        <div id="progress-bar"></div>
+        <div id="progress-text">0%</div>
+    </div>
+
     <!-- Botón de Enviar Datos -->
     <button id="submit-button" disabled>Enviar Datos</button>
 
@@ -228,6 +258,16 @@
         {% else %}
             <p>No hay registros disponibles.</p>
         {% endif %}
+    </div>
+
+    <!-- Logos en la Parte Inferior -->
+    <div class="footer-logos">
+        <img src="/static/logoonumujeres.png" alt="Logo ONU Mujeres">
+        <img src="/static/logomcc.jpg" alt="Logo MCC">
+        <img src="/static/logosoliner.png" alt="Logo Soliner">
+    </div>
+    <div class="footer-text">
+        Esta aplicación utiliza los servicios de la API de Pl@ntNet para identificar plantas mediante imágenes.
     </div>
 
     <script>
@@ -365,9 +405,22 @@
                 return;
             }
 
-            // Mostrar barra de estado
-            document.getElementById('status-bar').textContent = 'Enviando datos...';
-            document.getElementById('status-bar').style.display = 'block';
+            // Mostrar barra de progreso
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById
+			const progressBarContainer = document.getElementById('progress-bar-container');
+            progressBarContainer.style.display = 'block';
+
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 10;
+                progressBar.style.width = `${progress}%`;
+                progressText.textContent = `${progress}%`;
+
+                if (progress >= 100) {
+                    clearInterval(interval);
+                }
+            }, 500);
 
             fetch('/upload', {
                 method: 'POST',
@@ -395,6 +448,12 @@
             .catch(error => {
                 console.error('Error:', error);
                 document.getElementById('status-bar').textContent = 'Ocurrió un error al procesar la imagen.';
+            })
+            .finally(() => {
+                // Ocultar barra de progreso al finalizar
+                progressBarContainer.style.display = 'none';
+                progressBar.style.width = '0%';
+                progressText.textContent = '0%';
             });
         });
 
