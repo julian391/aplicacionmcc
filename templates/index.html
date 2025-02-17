@@ -13,9 +13,7 @@
             text-align: center;
             padding: 20px;
         }
-        h1 {
-            color: #2e7d32;
-        }
+        h1 { color: #2e7d32; }
         input, button {
             font-size: 1.2rem;
             margin: 10px;
@@ -23,9 +21,17 @@
         }
         #map {
             height: 300px;
-            margin: 20px auto;
             width: 90%;
+            margin: 20px auto;
             border-radius: 10px;
+        }
+        .menu button {
+            background-color: #4caf50;
+            color: white;
+            font-size: 1rem;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 5px;
         }
         #progress-container {
             width: 90%;
@@ -47,6 +53,12 @@
 <body>
     <h1>Identificación de Plantas</h1>
     <input type="text" id="username" placeholder="Ingrese su nombre">
+    <div class="menu">
+        <button onclick="selectOrgan('leaf')">🌿 Hoja</button>
+        <button onclick="selectOrgan('fruit')">🍎 Fruto</button>
+        <button onclick="selectOrgan('stem')">🪵 Tallo</button>
+        <button onclick="selectOrgan('entire')">🌳 Completo</button>
+    </div>
     <button onclick="selectImage()">📸 Tomar Foto</button>
 
     <div id="map"></div>
@@ -70,12 +82,10 @@
     <script>
         let gpsPosition = null;
         let selectedImage = null;
+        let selectedOrgan = null;
 
-        // Inicializar mapa con Leaflet
         const map = L.map('map').setView([2.5, -76.5], 8);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-        }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
         navigator.geolocation.getCurrentPosition(
             position => {
@@ -86,7 +96,11 @@
             error => console.error(error)
         );
 
-        // Selección de imagen
+        function selectOrgan(organ) {
+            selectedOrgan = organ;
+            alert("Órgano seleccionado: " + organ);
+        }
+
         function selectImage() {
             const input = document.createElement('input');
             input.type = 'file';
@@ -103,10 +117,9 @@
             input.click();
         }
 
-        // Enviar datos con barra de progreso
         document.getElementById('submit-button').addEventListener('click', () => {
             const username = document.getElementById('username').value;
-            if (!username || !selectedImage || !gpsPosition) {
+            if (!username || !selectedImage || !selectedOrgan || !gpsPosition) {
                 alert("Complete todos los campos.");
                 return;
             }
@@ -124,22 +137,10 @@
             fetch('/upload', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: username,
-                    organ: "leaf",
-                    image: selectedImage,
-                    location: gpsPosition.join(", ")
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert(`Planta identificada: ${data.scientific_name}`);
-                window.location.reload();
-            })
-            .catch(error => {
-                console.error(error);
-                alert("Error en el registro.");
-            });
+                body: JSON.stringify({ username, organ: selectedOrgan, image: selectedImage, location: gpsPosition.join(", ") })
+            }).then(response => response.json())
+            .then(data => alert(`Planta identificada: ${data.scientific_name}`))
+            .catch(error => alert("Error en el registro."));
         });
     </script>
 </body>

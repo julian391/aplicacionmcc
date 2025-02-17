@@ -45,8 +45,7 @@ def upload():
         location = data.get('location')
 
         # Decodificar imagen base64
-        image_data = image_data.split(",")[-1]  # Eliminar encabezado base64
-        image_bytes = base64.b64decode(image_data)
+        image_bytes = base64.b64decode(image_data.split(",")[-1])
 
         # Guardar imagen en el servidor
         image_filename = f"{username}_{organ}.png"
@@ -54,26 +53,21 @@ def upload():
         with open(image_path, "wb") as f:
             f.write(image_bytes)
 
-        # Enviar a Pl@ntNet
-        PLANTNET_API_KEY = "2b103McS4Rs5cVcuZS9e2ObBKe"
-        PLANTNET_API_URL = f"https://my-api.plantnet.org/v2/identify/all?api-key={PLANTNET_API_KEY}"
+        # Enviar imagen a Google AI Studio
+        GOOGLE_API_KEY = "AIzaSyCk8PXyVMeJROJWGQAMiIP2hwWL2s-PztI"
+        GOOGLE_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GOOGLE_API_KEY}"
 
-        image_stream = io.BytesIO(image_bytes)
         response = requests.post(
-            PLANTNET_API_URL,
-            files={"images": ("image.png", image_stream, "image/png")},
-            data={"organs": organ}
+            GOOGLE_API_URL,
+            headers={"Content-Type": "application/json"},
+            json={"contents": [{"parts": [{"text": "Identify the plant in the image"}]}]}
         )
 
         if response.status_code != 200:
-            return jsonify({"error": "Error en la API de Pl@ntNet"}), 500
+            return jsonify({"error": "Error en la API de Google AI"}), 500
 
         result = response.json()
-        suggestions = result.get("results", [])
-        if not suggestions:
-            return jsonify({"error": "No se encontraron sugerencias"}), 404
-
-        scientific_name = suggestions[0]["species"]["scientificNameWithoutAuthor"]
+        scientific_name = result.get("predictions", [{}])[0].get("label", "Desconocido")
 
         # Guardar en la base de datos
         cursor.execute('''
