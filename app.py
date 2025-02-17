@@ -2,8 +2,6 @@ from flask import Flask, request, jsonify, render_template
 import sqlite3
 import requests
 import base64
-import os
-import io
 
 app = Flask(__name__)
 
@@ -17,19 +15,17 @@ cursor.execute('''
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT,
         organ TEXT,
-        image_path TEXT,
+        image TEXT,
         location TEXT,
         scientific_name TEXT
     )
 ''')
 conn.commit()
 
-UPLOAD_FOLDER = "static/uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
 # Ruta principal
 @app.route('/')
 def index():
+    # Obtener todos los registros de la base de datos
     cursor.execute('SELECT * FROM plant_data ORDER BY id DESC')
     records = cursor.fetchall()
     return render_template('index.html', records=records)
@@ -44,45 +40,52 @@ def upload():
         image_data = data.get('image')
         location = data.get('location')
 
-        # Decodificar imagen base64
-        image_bytes = base64.b64decode(image_data.split(",")[-1])
+        if not username or not organ or not image_data:
+            return jsonify({"error": "Faltan campos obligatorios"}), 400
 
-        # Guardar imagen en el servidor
-        image_filename = f"{username}_{organ}.png"
-        image_path = os.path.join(UPLOAD_FOLDER, image_filename)
-        with open(image_path, "wb") as f:
-            f.write(image_bytes)
+        # Decodificar imagen
+        try:
+            image_bytes = base64.b64decode(image_data)
+        except Exception as e:
+            return jsonify({"error": f"Error al decodificar la imagen: {str(e)}"}), 400
 
-        # Enviar imagen a Google AI Studio
-        GOOGLE_API_KEY = "AIzaSyCk8PXyVMeJROJWGQAMiIP2hwWL2s-PztI"
-        GOOGLE_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GOOGLE_API_KEY}"
-
-        response = requests.post(
-            GOOGLE_API_URL,
-            headers={"Content-Type": "application/json"},
-            json={"contents": [{"parts": [{"text": "Identify the plant in the image"}]}]}
-        )
-
-        if response.status_code != 200:
-            return jsonify({"error": "Error en la API de Google AI"}), 500
+        # Enviar a Pl@ntNet
+        PLANTNET_API_KEY = "2b103McS4Rs5cVcuZS9e2ObBKe"
+        PLANTNET_API_URL = f"https://my-api.plantnet.org/v2/identify/all?api-key={PLANTNET_API_KEY}"
+        try:
+            response = requests.post(
+                PLANTNET_API_URL,
+                files={"images": ("image.png", image_bytes, "image/png")},
+                data={"organs": organ}
+            )
+            if response.status_code != 200:
+                return jsonify({"error": f"Error en la API de Pl@ntNet: {response.text}"}), 500
+        except Exception as e:
+            return jsonify({"error": f"Error al conectar con la API de Pl@ntNet: {str(e)}"}), 500
 
         result = response.json()
-        scientific_name = result.get("predictions", [{}])[0].get("label", "Desconocido")
+        suggestions = result.get("results", [])
+        if not suggestions:
+            return jsonify({"error": "No se encontraron sugerencias"}), 404
+
+        scientific_name = suggestions[0]["species"]["scientificNameWithoutAuthor"]
 
         # Guardar en la base de datos
-        cursor.execute('''
-            INSERT INTO plant_data (username, organ, image_path, location, scientific_name)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (username, organ, image_path, location, scientific_name))
-        conn.commit()
+        try:
+            cursor.execute('''
+                INSERT INTO plant_data (username, organ, image, location, scientific_name)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (username, organ, image_data, location, scientific_name))
+            conn.commit()
+        except Exception as e:
+            return jsonify({"error": f"Error al guardar en la base de datos: {str(e)}"}), 500
 
         return jsonify({
-            "scientific_name": scientific_name,
-            "image_url": image_path
+            "scientific_name": scientific_name
         })
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Error general: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
