@@ -22,6 +22,12 @@ cursor.execute('''
 ''')
 conn.commit()
 
+# Crear índice para mejorar el rendimiento
+cursor.execute('''
+    CREATE INDEX IF NOT EXISTS idx_plant_data_username ON plant_data (username)
+''')
+conn.commit()
+
 # Ruta principal
 @app.route('/')
 def index():
@@ -56,10 +62,15 @@ def upload():
             response = requests.post(
                 PLANTNET_API_URL,
                 files={"images": ("image.png", image_bytes, "image/png")},
-                data={"organs": organ}
+                data={"organs": organ},
+                timeout=10  # Agregar un tiempo de espera de 10 segundos
             )
             if response.status_code != 200:
-                return jsonify({"error": f"Error en la API de Pl@ntNet: {response.text}"}), 500
+                return jsonify({
+                    "error": f"Error en la API de Pl@ntNet: {response.status_code} - {response.text}"
+                }), 500
+        except requests.exceptions.Timeout:
+            return jsonify({"error": "La API de Pl@ntNet tardó demasiado tiempo en responder."}), 500
         except Exception as e:
             return jsonify({"error": f"Error al conectar con la API de Pl@ntNet: {str(e)}"}), 500
 
