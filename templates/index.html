@@ -179,7 +179,7 @@
             border-top: 1px solid #ddd;
         }
         .footer-logos img {
-            width: 100px;
+            width: 100px; /* Tamaño igual para todos los logos */
             height: auto;
         }
         .footer-text {
@@ -187,6 +187,22 @@
             font-size: 1rem;
             margin-top: 10px;
             color: #555;
+        }
+
+        /* Barra de Desplazamiento Lateral Gruesa */
+        ::-webkit-scrollbar {
+            width: 45px; /* Tres veces más ancha */
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
         }
     </style>
 </head>
@@ -407,8 +423,8 @@
 
             // Mostrar barra de progreso
             const progressBar = document.getElementById('progress-bar');
-            const progressText = document.getElementById
-			const progressBarContainer = document.getElementById('progress-bar-container');
+            const progressText = document.getElementById('progress-text');
+            const progressBarContainer = document.getElementById('progress-bar-container');
             progressBarContainer.style.display = 'block';
 
             let progress = 0;
