@@ -98,6 +98,54 @@
             border-bottom: none;
         }
 
+        /* Barra de Estado */
+        #status-bar {
+            background-color: #4caf50;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            margin: 20px auto;
+            width: 90%;
+            border-radius: 10px;
+            display: none;
+        }
+
+        /* Botón de Enviar Datos */
+        #submit-button {
+            background-color: #2e7d32;
+            color: white;
+            font-size: 1.5rem;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 90%;
+            margin: 20px auto;
+            display: block;
+            transition: background-color 0.3s ease;
+        }
+        #submit-button:hover {
+            background-color: #276b2c;
+        }
+
+        /* Botón de Nuevo Registro */
+        #new-record-button {
+            background-color: #ff9800;
+            color: white;
+            font-size: 1.2rem;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 90%;
+            margin: 20px auto;
+            display: block;
+            transition: background-color 0.3s ease;
+        }
+        #new-record-button:hover {
+            background-color: #e68a00;
+        }
+
         /* Barra de Desplazamiento Vertical Gruesa */
         ::-webkit-scrollbar {
             width: 15px;
@@ -153,6 +201,15 @@
         </button>
     </div>
 
+    <!-- Barra de Estado -->
+    <div id="status-bar"></div>
+
+    <!-- Botón de Enviar Datos -->
+    <button id="submit-button" disabled>Enviar Datos</button>
+
+    <!-- Botón de Nuevo Registro -->
+    <button id="new-record-button">Nuevo Registro</button>
+
     <!-- Lista de Registros -->
     <div class="records">
         <h2>Registros Recientes</h2>
@@ -168,6 +225,8 @@
 
     <script>
         let gpsPosition = null;
+        let selectedImage = null;
+        let selectedOrgan = null;
 
         // Inicializar el mapa
         const map = L.map('map').setView([4.5709, -74.2973], 6); // Coordenadas iniciales (Colombia)
@@ -222,35 +281,69 @@
                     document.getElementById(`thumbnail-${organ}`).src = reader.result;
                     document.getElementById(`thumbnail-${organ}`).style.display = 'block';
 
-                    // Enviar datos al backend
-                    const username = document.getElementById('username').value;
-                    const image_data = reader.result.split(',')[1]; // Extraer base64
-                    const location = gpsPosition ? gpsPosition.join(', ') : 'Desconocida';
+                    // Guardar la imagen y el órgano seleccionado
+                    selectedImage = reader.result.split(',')[1]; // Extraer base64
+                    selectedOrgan = organ;
 
-                    fetch('/upload', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            username: username,
-                            organ: organ,
-                            image: image_data,
-                            location: location
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        alert(`Nombre científico identificado: ${data.scientific_name}`);
-                        location.reload(); // Recargar la página para actualizar la lista de registros
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('Ocurrió un error al procesar la imagen.');
-                    });
+                    // Habilitar el botón de enviar datos
+                    document.getElementById('submit-button').disabled = false;
                 };
                 reader.readAsDataURL(file);
             };
             input.click();
         }
+
+        // Función para enviar datos a la API
+        document.getElementById('submit-button').addEventListener('click', () => {
+            const username = document.getElementById('username').value;
+            const location = gpsPosition ? gpsPosition.join(', ') : 'Desconocida';
+
+            if (!selectedImage || !selectedOrgan || !username) {
+                document.getElementById('status-bar').textContent = 'Por favor, completa todos los campos.';
+                document.getElementById('status-bar').style.display = 'block';
+                return;
+            }
+
+            // Mostrar barra de estado
+            document.getElementById('status-bar').textContent = 'Enviando datos...';
+            document.getElementById('status-bar').style.display = 'block';
+
+            fetch('/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: username,
+                    organ: selectedOrgan,
+                    image: selectedImage,
+                    location: location
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('status-bar').textContent = `Nombre científico identificado: ${data.scientific_name}`;
+                setTimeout(() => location.reload(), 2000); // Recargar la página después de 2 segundos
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('status-bar').textContent = 'Ocurrió un error al procesar la imagen.';
+            });
+        });
+
+        // Función para limpiar los campos y comenzar un nuevo registro
+        document.getElementById('new-record-button').addEventListener('click', () => {
+            document.getElementById('username').value = '';
+            document.getElementById('status-bar').style.display = 'none';
+            document.getElementById('submit-button').disabled = true;
+
+            // Limpiar miniaturas
+            document.querySelectorAll('.menu img').forEach(img => {
+                img.src = '';
+                img.style.display = 'none';
+            });
+
+            selectedImage = null;
+            selectedOrgan = null;
+        });
     </script>
 </body>
 </html>
