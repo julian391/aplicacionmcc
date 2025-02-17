@@ -1,0 +1,20 @@
+# Ignorar archivos de Python
+__pycache__/
+*.pyc
+
+# Ignorar archivos de Jupyter Notebook
+.ipynb_checkpoints/
+
+# Ignorar archivos de construcción
+build/
+dist/
+
+# Ignorar archivos de bases de datos locales
+data.db
+
+# Ignorar otros archivos innecesarios
+aplic3.ipynb
+app.spec
+run_app.bat
+googleStudio/
+pantid/

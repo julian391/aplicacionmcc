@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Identificación de Plantas</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+        }
+        .left-panel {
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .right-panel {
+            width: 50%;
+        }
+        #photo-preview {
+            width: 320px;
+            height: 240px;
+            border: 1px solid #ccc;
+            margin-bottom: 10px;
+            background-color: #f3f3f3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #aaa;
+        }
+        #status-bar {
+            width: 100%;
+            background-color: #f3f3f3;
+            border: 1px solid #ccc;
+            height: 20px;
+            margin-top: 10px;
+        }
+        #progress {
+            width: 0%;
+            height: 100%;
+            background-color: green;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+        }
+        .map-container {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Panel Izquierdo -->
+        <div class="left-panel">
+            <h2>Captura de Fotografía</h2>
+
+            <!-- Campo para el nombre del usuario -->
+            <label for="username">Nombre de Usuario:</label>
+            <input type="text" id="username" placeholder="Ingresa tu nombre">
+
+            <!-- Sección para capturar foto o cargar imagen -->
+            <button id="capture-btn">Tomar Foto</button>
+            <input type="file" id="upload-btn" accept="image/*">
+            <video id="video" width="320" height="240" autoplay style="display:none;"></video>
+            <canvas id="canvas" style="display:none;"></canvas>
+
+            <!-- Vista previa de la fotografía -->
+            <div id="photo-preview">Vista Previa</div>
+
+            <!-- Botón para enviar datos -->
+            <button id="send-data-btn" disabled>Enviar Datos</button>
+
+            <!-- Barra de estado -->
+            <div id="status-bar">
+                <div id="progress">0%</div>
+            </div>
+            <p id="status-message">Esperando acción...</p>
+        </div>
+
+        <!-- Panel Derecho (Mapa) -->
+        <div class="right-panel">
+            <div id="map" class="map-container"></div>
+        </div>
+    </div>
+
+    <script>
+        // Inicializar mapa
+        const map = L.map('map').setView([2.4417, -76.6132], 8); // Coordenadas del departamento del Cauca
+
+        // Agregar capa base del mapa
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+        }).addTo(map);
+
+        // Cargar GeoJSON del departamento del Cauca
+        fetch('departamentoCauca.geojson')
+            .then(response => response.json())
+            .then(data => {
+                L.geoJSON(data, {
+                    style: {
+                        color: "#FF0000", // Rojo para resaltar los límites
+                        weight: 2,
+                        fillOpacity: 0.1
+                    }
+                }).addTo(map);
+            });
+
+        // Cargar GeoJSON de los municipios
+        fetch('Municipios.geojson')
+            .then(response => response.json())
+            .then(data => {
+                L.geoJSON(data, {
+                    style: {
+                        color: "#0000FF", // Azul para resaltar los límites de los municipios
+                        weight: 1,
+                        fillOpacity: 0.1
+                    }
+                }).addTo(map);
+            });
+
+        // Capturar foto
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const photoPreview = document.getElementById('photo-preview');
+        const captureBtn = document.getElementById('capture-btn');
+        const uploadBtn = document.getElementById('upload-btn');
+        const sendDataBtn = document.getElementById('send-data-btn');
+        const statusMessage = document.getElementById('status-message');
+        const progressBar = document.getElementById('progress');
+
+        let imageData = null;
+
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then((stream) => {
+                video.srcObject = stream;
+            });
+
+        captureBtn.addEventListener('click', () => {
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            imageData = canvas.toDataURL('image/png');
+            photoPreview.style.backgroundImage = `url(${imageData})`;
+            photoPreview.style.backgroundSize = "cover";
+            photoPreview.textContent = "";
+            statusMessage.textContent = "Foto capturada. Haz clic en 'Enviar Datos'.";
+            sendDataBtn.disabled = false;
+        });
+
+        uploadBtn.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imageData = e.target.result;
+                    photoPreview.style.backgroundImage = `url(${imageData})`;
+                    photoPreview.style.backgroundSize = "cover";
+                    photoPreview.textContent = "";
+                    statusMessage.textContent = "Foto cargada. Haz clic en 'Enviar Datos'.";
+                    sendDataBtn.disabled = false;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Enviar datos al servidor
+        sendDataBtn.addEventListener('click', () => {
+            const username = document.getElementById('username').value;
+            if (!username || !imageData) {
+                alert("Por favor, ingresa un nombre de usuario y captura una foto.");
+                return;
+            }
+
+            statusMessage.textContent = "Enviando datos...";
+            updateProgress(25);
+
+            axios.post('/upload', {
+                username: username,
+                image: imageData
+            }).then((response) => {
+                updateProgress(75);
+                statusMessage.textContent = "Datos enviados correctamente.";
+                updateProgress(100);
+
+                alert(`Nombre Científico: ${response.data.scientific_name}\nEstado Fenológico: ${response.data.phenological_state}\nUsos Comunes: ${response.data.plant_uses}`);
+            }).catch((error) => {
+                statusMessage.textContent = "Error al enviar datos. Intenta nuevamente.";
+                console.error(error);
+            });
+        });
+
+        // Función para actualizar la barra de progreso
+        function updateProgress(percent) {
+            progressBar.style.width = percent + '%';
+            progressBar.textContent = percent + '%';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Identificación de Plantas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
+    <style>
+        /* Estilos Generales */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin: 20px 0;
+            color: #2e7d32;
+        }
+        label {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            display: block;
+            text-align: center;
+        }
+        input[type="text"] {
+            width: 90%;
+            padding: 15px;
+            font-size: 1.2rem;
+            margin: 0 auto 20px;
+            display: block;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            box-sizing: border-box;
+        }
+
+        /* Mapa */
+        #map {
+            height: 250px;
+            width: 100%;
+            margin: 20px auto;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+        }
+
+        /* Menú de Órganos */
+        .menu {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        .menu button {
+            background-color: #4caf50;
+            color: white;
+            font-size: 1.2rem;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 45%;
+            margin: 10px 0;
+            transition: background-color 0.3s ease;
+        }
+        .menu button:hover {
+            background-color: #45a049;
+        }
+        .menu button img {
+            width: 50px;
+            height: 50px;
+            margin-top: 10px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Identificación de Plantas</h1>
+
+    <!-- Campo de Nombre de Usuario -->
+    <label for="username">Nombre de Usuario:</label>
+    <input type="text" id="username" placeholder="Ingresa tu nombre de usuario" required>
+
+    <!-- Mapa -->
+    <div id="map"></div>
+
+    <!-- Menú de Órganos -->
+    <div class="menu">
+        <button onclick="selectOrgan('leaf')">
+            🌿 Hoja<br>
+            <img id="thumbnail-leaf" src="" alt="Miniatura Hoja" style="display: none;">
+        </button>
+        <button onclick="selectOrgan('fruit')">
+            🍎 Fruto<br>
+            <img id="thumbnail-fruit" src="" alt="Miniatura Fruto" style="display: none;">
+        </button>
+        <button onclick="selectOrgan('stem')">
+            🪵 Tallo<br>
+            <img id="thumbnail-stem" src="" alt="Miniatura Tallo" style="display: none;">
+        </button>
+        <button onclick="selectOrgan('entire')">
+            🌳 Completo<br>
+            <img id="thumbnail-entire" src="" alt="Miniatura Completo" style="display: none;">
+        </button>
+        <button onclick="selectOrgan('inflorescence')">
+            🌼 Inflorescencia<br>
+            <img id="thumbnail-inflorescence" src="" alt="Miniatura Inflorescencia" style="display: none;">
+        </button>
+        <button onclick="selectOrgan('bark')">
+            🌲 Corteza<br>
+            <img id="thumbnail-bark" src="" alt="Miniatura Corteza" style="display: none;">
+        </button>
+    </div>
+
+    <script>
+        let gpsPosition = null;
+
+        // Inicializar el mapa
+        const map = L.map('map').setView([4.5709, -74.2973], 6); // Coordenadas iniciales (Colombia)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+        }).addTo(map);
+
+        // Agregar límites del departamento y municipios
+        fetch('/static/departamentoCauca.geojson')
+            .then(response => response.json())
+            .then(data => {
+                L.geoJSON(data, { color: 'blue' }).addTo(map);
+            });
+
+        fetch('/static/Municipios.geojson')
+            .then(response => response.json())
+            .then(data => {
+                L.geoJSON(data, { color: 'green' }).addTo(map);
+            });
+
+        // Obtener la posición GPS del usuario
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                gpsPosition = [position.coords.latitude, position.coords.longitude];
+                const zoomLevel = calculateZoomLevel(position.coords.latitude); // Calcular zoom dinámico
+                map.setView(gpsPosition, zoomLevel); // Centrar el mapa en la ubicación del usuario
+                L.marker(gpsPosition).addTo(map).bindPopup("Tu ubicación").openPopup();
+            },
+            error => {
+                alert("No se pudo obtener la ubicación GPS. Asegúrate de que el GPS esté activado.");
+                console.error(error);
+            }
+        );
+
+        // Función para calcular el nivel de zoom dinámico
+        function calculateZoomLevel(latitude) {
+            const earthCircumference = 40075; // Circunferencia de la Tierra en km
+            const metersPerPixel = 2000 / 256; // 2 km divididos por el tamaño de un tile (256px)
+            const zoomLevel = Math.log2(earthCircumference * Math.cos(latitude * Math.PI / 180) / metersPerPixel);
+            return Math.round(zoomLevel);
+        }
+
+        // Función para seleccionar un órgano y cargar la imagen
+        function selectOrgan(organ) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = () => {
+                const file = input.files[0];
+                const reader = new FileReader();
+                reader.onload = () => {
+                    document.getElementById(`thumbnail-${organ}`).src = reader.result;
+                    document.getElementById(`thumbnail-${organ}`).style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            };
+            input.click();
+        }
+    </script>
+</body>
+</html>
