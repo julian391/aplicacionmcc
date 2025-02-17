@@ -63,7 +63,7 @@ def upload():
                 PLANTNET_API_URL,
                 files={"images": ("image.png", image_bytes, "image/png")},
                 data={"organs": organ},
-                timeout=10  # Agregar un tiempo de espera de 10 segundos
+                timeout=30  # Aumenta el tiempo de espera a 30 segundos
             )
             if response.status_code != 200:
                 return jsonify({
