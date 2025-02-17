@@ -7,28 +7,42 @@ import os
 app = Flask(__name__)
 
 # Configuración de la base de datos SQLite
-conn = sqlite3.connect('data.db', check_same_thread=False)
-cursor = conn.cursor()
+DATABASE_PATH = 'data.db'
+
+def get_db_connection():
+    conn = sqlite3.connect(DATABASE_PATH, check_same_thread=False)
+    conn.row_factory = sqlite3.Row  # Para devolver filas como diccionarios
+    return conn
 
 # Crear tabla si no existe
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS plant_data (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT,
-        organ TEXT,
-        image TEXT,
-        location TEXT,
-        scientific_name TEXT
-    )
-''')
-conn.commit()
+def initialize_database():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS plant_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            organ TEXT NOT NULL,
+            image TEXT NOT NULL,
+            location TEXT,
+            scientific_name TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+initialize_database()
 
 # Ruta principal
 @app.route('/')
 def index():
     # Obtener todos los registros de la base de datos
+    conn = get_db_connection()
+    cursor = conn.cursor()
     cursor.execute('SELECT * FROM plant_data ORDER BY id DESC')
     records = cursor.fetchall()
+    conn.close()
+
     return render_template('index.html', records=records)
 
 # Endpoint para recibir datos
@@ -88,11 +102,14 @@ def upload():
         # Guardar en la base de datos
         try:
             print("Guardando datos en la base de datos...")  # Mensaje de depuración
+            conn = get_db_connection()
+            cursor = conn.cursor()
             cursor.execute('''
                 INSERT INTO plant_data (username, organ, image, location, scientific_name)
                 VALUES (?, ?, ?, ?, ?)
             ''', (username, organ, image_data, location, scientific_name))
             conn.commit()
+            conn.close()
         except Exception as e:
             print(f"Error al guardar en la base de datos: {str(e)}")  # Mensaje de depuración
             return jsonify({"error": f"Error al guardar en la base de datos: {str(e)}"}), 500
@@ -105,6 +122,12 @@ def upload():
     except Exception as e:
         print(f"Error general en /upload: {str(e)}")  # Mensaje de depuración
         return jsonify({"error": f"Error general: {str(e)}"}), 500
+
+# Endpoint para servir archivos estáticos (GeoJSON)
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    static_folder = os.path.join(os.getcwd(), 'static')
+    return app.send_static_file(os.path.join(static_folder, filename))
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))

@@ -331,10 +331,9 @@
 
         // Función para calcular el nivel de zoom dinámico
         function calculateZoomLevel(latitude) {
-            const earthCircumference = 40075; // Circunferencia de
-            const earthCircumference = 40075; // Circunferencia de la Tierra en km
+            const earthCircumferenceForZoom = 40075; // Circunferencia de la Tierra en km
             const metersPerPixel = 2000 / 256; // 2 km divididos por el tamaño de un tile (256px)
-            const zoomLevel = Math.log2(earthCircumference * Math.cos(latitude * Math.PI / 180) / metersPerPixel);
+            const zoomLevel = Math.log2(earthCircumferenceForZoom * Math.cos(latitude * Math.PI / 180) / metersPerPixel);
             return Math.round(zoomLevel);
         }
 
@@ -343,17 +342,17 @@
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = 'image/*';
+            input.setAttribute('capture', 'environment'); // Permitir captura desde la cámara
+
             input.onchange = () => {
                 const file = input.files[0];
                 const reader = new FileReader();
 
                 reader.onload = () => {
-                    // Comprimir la imagen antes de enviarla
                     compressImage(reader.result, 0.5).then(compressedImage => {
                         document.getElementById(`thumbnail-${organ}`).src = compressedImage;
                         document.getElementById(`thumbnail-${organ}`).style.display = 'block';
 
-                        // Guardar la imagen comprimida y el órgano seleccionado
                         selectedImage = compressedImage.split(',')[1]; // Extraer base64
                         selectedOrgan = organ;
 
@@ -375,7 +374,6 @@
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
 
-                    // Redimensionar la imagen
                     const maxWidth = 600; // Reducir el ancho máximo
                     const maxHeight = 400; // Reducir el alto máximo
                     let width = img.width;
@@ -396,16 +394,14 @@
                     canvas.width = width;
                     canvas.height = height;
 
-                    // Dibujar la imagen en el canvas
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    // Convertir el canvas a Base64 con calidad reducida
                     canvas.toBlob(blob => {
                         const reader = new FileReader();
                         reader.onload = () => resolve(reader.result);
                         reader.onerror = reject;
                         reader.readAsDataURL(blob);
-                    }, 'image/jpeg', quality); // Ajusta la calidad (0.3 para mayor compresión)
+                    }, 'image/jpeg', quality);
                 };
                 img.onerror = reject;
             });
