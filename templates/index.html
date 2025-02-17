@@ -14,6 +14,7 @@
             padding: 0;
             background-color: #f9f9f9;
             color: #333;
+            overflow-y: scroll; /* Barra de desplazamiento vertical */
         }
         h1 {
             text-align: center;
@@ -77,6 +78,41 @@
             margin-left: auto;
             margin-right: auto;
         }
+
+        /* Lista de Registros */
+        .records {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px auto;
+            width: 90%;
+            background-color: #fff;
+        }
+        .record-item {
+            border-bottom: 1px solid #ddd;
+            padding: 10px 0;
+        }
+        .record-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Barra de Desplazamiento Vertical Gruesa */
+        ::-webkit-scrollbar {
+            width: 15px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
     </style>
 </head>
 <body>
@@ -115,6 +151,19 @@
             🌲 Corteza<br>
             <img id="thumbnail-bark" src="" alt="Miniatura Corteza" style="display: none;">
         </button>
+    </div>
+
+    <!-- Lista de Registros -->
+    <div class="records">
+        <h2>Registros Recientes</h2>
+        {% for record in records %}
+        <div class="record-item">
+            <strong>Usuario:</strong> {{ record[1] }}<br>
+            <strong>Órgano:</strong> {{ record[2] }}<br>
+            <strong>Ubicación:</strong> {{ record[4] }}<br>
+            <strong>Nombre Científico:</strong> {{ record[5] }}
+        </div>
+        {% endfor %}
     </div>
 
     <script>
@@ -172,6 +221,31 @@
                 reader.onload = () => {
                     document.getElementById(`thumbnail-${organ}`).src = reader.result;
                     document.getElementById(`thumbnail-${organ}`).style.display = 'block';
+
+                    // Enviar datos al backend
+                    const username = document.getElementById('username').value;
+                    const image_data = reader.result.split(',')[1]; // Extraer base64
+                    const location = gpsPosition ? gpsPosition.join(', ') : 'Desconocida';
+
+                    fetch('/upload', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            username: username,
+                            organ: organ,
+                            image: image_data,
+                            location: location
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(`Nombre científico identificado: ${data.scientific_name}`);
+                        location.reload(); // Recargar la página para actualizar la lista de registros
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Ocurrió un error al procesar la imagen.');
+                    });
                 };
                 reader.readAsDataURL(file);
             };

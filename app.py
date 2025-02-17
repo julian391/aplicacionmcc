@@ -25,7 +25,10 @@ conn.commit()
 # Ruta principal
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # Obtener todos los registros de la base de datos
+    cursor.execute('SELECT * FROM plant_data ORDER BY id DESC')
+    records = cursor.fetchall()
+    return render_template('index.html', records=records)
 
 # Ruta para recibir datos
 @app.route('/upload', methods=['POST'])
