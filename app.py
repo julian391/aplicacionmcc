@@ -36,7 +36,7 @@ def index():
     records = cursor.fetchall()
     return render_template('index.html', records=records)
 
-# Ruta para recibir datos
+# Endpoint para recibir datos
 @app.route('/upload', methods=['POST'])
 def upload():
     try:
@@ -59,12 +59,14 @@ def upload():
         PLANTNET_API_KEY = "2b103McS4Rs5cVcuZS9e2ObBKe"
         PLANTNET_API_URL = f"https://my-api.plantnet.org/v2/identify/all?api-key={PLANTNET_API_KEY}"
         try:
+            print("Enviando solicitud a la API de Pl@ntNet...")  # Mensaje de depuración
             response = requests.post(
                 PLANTNET_API_URL,
                 files={"images": ("image.png", image_bytes, "image/png")},
                 data={"organs": organ},
-                timeout=30  # Aumenta el tiempo de espera a 30 segundos
+                timeout=60  # Aumenta el tiempo de espera a 60 segundos
             )
+            print(f"Respuesta de la API de Pl@ntNet: {response.status_code} - {response.text}")  # Mensaje de depuración
             if response.status_code != 200:
                 return jsonify({
                     "error": f"Error en la API de Pl@ntNet: {response.status_code} - {response.text}"
@@ -97,6 +99,16 @@ def upload():
 
     except Exception as e:
         return jsonify({"error": f"Error general: {str(e)}"}), 500
+
+# Endpoint para obtener la IP pública del servidor
+@app.route('/get-ip', methods=['GET'])
+def get_ip():
+    try:
+        response = requests.get('https://api.ipify.org?format=json')
+        ip = response.json().get('ip')
+        return jsonify({"ip": ip})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
