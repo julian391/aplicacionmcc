@@ -331,6 +331,7 @@
 
         // Función para calcular el nivel de zoom dinámico
         function calculateZoomLevel(latitude) {
+            const earthCircumference = 40075; // Circunferencia de
             const earthCircumference = 40075; // Circunferencia de la Tierra en km
             const metersPerPixel = 2000 / 256; // 2 km divididos por el tamaño de un tile (256px)
             const zoomLevel = Math.log2(earthCircumference * Math.cos(latitude * Math.PI / 180) / metersPerPixel);
@@ -438,6 +439,10 @@
                 }
             }, 500);
 
+            console.log("Iniciando solicitud...");
+            document.getElementById('status-bar').textContent = 'Iniciando solicitud...';
+            document.getElementById('status-bar').style.display = 'block';
+
             fetch('/upload', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -449,23 +454,26 @@
                 })
             })
             .then(response => {
+                console.log(`Respuesta del servidor recibida. Código de estado: ${response.status}`);
                 if (!response.ok) {
                     throw new Error(`Error en la solicitud: ${response.status}`);
                 }
                 return response.json();
             })
             .then(data => {
+                console.log("Datos recibidos:", data);
                 if (data.error) {
-				    throw new Error(data.error);
+                    throw new Error(data.error);
                 }
                 document.getElementById('status-bar').textContent = `Nombre científico identificado: ${data.scientific_name}`;
                 setTimeout(() => location.reload(), 2000); // Recargar la página después de 2 segundos
             })
             .catch(error => {
                 console.error('Error:', error);
-                document.getElementById('status-bar').textContent = 'Ocurrió un error al procesar la imagen.';
+                document.getElementById('status-bar').textContent = `Ocurrió un error: ${error.message}. Verifica la consola para más detalles.`;
             })
             .finally(() => {
+                console.log("Finalizando solicitud...");
                 // Ocultar barra de progreso al finalizar
                 progressBarContainer.style.display = 'none';
                 progressBar.style.width = '0%';
